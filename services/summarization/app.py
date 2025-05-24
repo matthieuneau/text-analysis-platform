@@ -41,7 +41,7 @@ app = FastAPI(
 # Global variables for model
 summarization_pipeline = None
 # model_name = "facebook/bart-large-cnn"    # About 1.6GB
-model_name = "sshleifer/distilbart-cnn-12-6"  # About 300MB
+model_name = "Falconsai/text_summarization"  # Smaller model
 
 
 # Request/Response Models
@@ -138,6 +138,7 @@ def summarize_text(
         logger.info(f"Summarization completed for text of length {len(text)}")
 
         summary_text = result[0]["summary_text"]
+        logger.info(f"=================== summary_text: {summary_text}")
         original_length = len(text.split())
         summary_length = len(summary_text.split())
         compression_ratio = (
@@ -301,4 +302,4 @@ async def get_model_info():
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8003, reload=True)
+    uvicorn.run(app, host="0.0.0.0", port=8003)
