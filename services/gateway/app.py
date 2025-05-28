@@ -1,101 +1,19 @@
-import logging
-import sys
-from contextlib import asynccontextmanager
-from typing import Any, Dict
-
-import httpx
+# app.py - Updated version
 import structlog
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from ..preprocessing.app import (
-    CleanedTextResponse,
-    NormalizedTextResponse,
-    TextInput,
-    TokenizedTextResponse,
+from services.gateway.utils import (
+    check_all_services_health,
+    get_logger,  # Import the getter function instead
+    lifespan,
+    make_service_request,
 )
+
+from .routes import router
 from .settings import settings
-
-
-def setup_logging():
-    """Configure structured logging"""
-    if settings.log_format == "json":
-        structlog.configure(
-            processors=[
-                structlog.stdlib.filter_by_level,
-                structlog.stdlib.add_logger_name,
-                structlog.stdlib.add_log_level,
-                structlog.stdlib.PositionalArgumentsFormatter(),
-                structlog.processors.TimeStamper(fmt="iso"),
-                structlog.processors.StackInfoRenderer(),
-                structlog.processors.format_exc_info,
-                structlog.processors.UnicodeDecoder(),
-                structlog.processors.JSONRenderer(),
-            ],
-            context_class=dict,
-            logger_factory=structlog.stdlib.LoggerFactory(),
-            wrapper_class=structlog.stdlib.BoundLogger,
-            cache_logger_on_first_use=True,
-        )
-    else:
-        # Simple text logging for development
-        logging.basicConfig(
-            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            level=getattr(logging, settings.log_level.upper()),
-            stream=sys.stdout,
-        )
-
-    return structlog.get_logger()
-
-
-# TODO: figure out how to type to allow to be temporarily None
-http_client: httpx.AsyncClient = None  # type: ignore
-logger: structlog.stdlib.BoundLogger = None  # type: ignore
-
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup
-    global http_client, logger
-
-    # Setup logging
-    logger = setup_logging()
-    logger.info("Starting Text Analysis Gateway", version=settings.version)
-
-    # Initialize HTTP client
-    timeout = httpx.Timeout(
-        connect=settings.connection_timeout,
-        read=settings.read_timeout,
-        write=10.0,
-        pool=5.0,
-    )
-
-    limits = httpx.Limits(
-        max_keepalive_connections=settings.connection_pool_size,
-        max_connections=settings.connection_pool_size + 10,
-    )
-
-    http_client = httpx.AsyncClient(
-        timeout=timeout, limits=limits, follow_redirects=True
-    )
-
-    logger.info("HTTP client initialized")
-
-    # Check service health on startup
-    await check_all_services_health()
-
-    logger.info("Gateway startup completed successfully")
-
-    yield
-
-    # Shutdown
-    logger.info("Shutting down Text Analysis Gateway")
-    if http_client:
-        await http_client.aclose()
-    logger.info("Gateway shutdown completed")
-
 
 app = FastAPI(
     title=settings.app_name,
@@ -104,6 +22,8 @@ app = FastAPI(
     lifespan=lifespan,
     debug=settings.debug,
 )
+
+app.include_router(router)
 
 # Add CORS middleware
 app.add_middleware(
@@ -119,6 +39,7 @@ app.add_middleware(
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     """Log all incoming requests"""
+    logger = get_logger()  # Get logger when needed
 
     logger.info(
         "Request started",
@@ -143,6 +64,8 @@ async def log_requests(request: Request, call_next):
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     """Handle HTTP exceptions with structured logging"""
+    logger = get_logger()  # Get logger when needed
+
     logger.error(
         "HTTP exception occurred",
         status_code=exc.status_code,
@@ -160,6 +83,8 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 @app.exception_handler(Exception)
 async def general_exception_handler(request: Request, exc: Exception):
     """Handle general exceptions"""
+    logger = get_logger()  # Get logger when needed
+
     logger.error(
         "Unhandled exception occurred",
         error=str(exc),
@@ -175,110 +100,6 @@ async def general_exception_handler(request: Request, exc: Exception):
     )
 
 
-async def make_service_request(
-    service_config,
-    endpoint: str,
-    method: str = "GET",
-    json_data: Dict | None = None,
-    params: Dict | None = None,
-) -> Dict[str, Any]:
-    """Make a request to a service with retry logic"""
-    url = f"{service_config.url.rstrip('/')}/{endpoint.lstrip('/')}"
-    for attempt in range(service_config.max_retries + 1):
-        try:
-            if method.upper() == "GET":
-                response = await http_client.get(
-                    url, params=params, timeout=service_config.timeout
-                )
-            elif method.upper() == "POST":
-                response = await http_client.post(
-                    url, json=json_data, params=params, timeout=service_config.timeout
-                )
-            else:
-                raise ValueError(f"Unsupported HTTP method: {method}")
-
-            response.raise_for_status()
-            return response.json()
-
-        except httpx.TimeoutException:
-            logger.warning(
-                "Service request timeout",
-                url=url,
-                attempt=attempt + 1,
-                max_attempts=service_config.max_retries + 1,
-            )
-            if attempt == service_config.max_retries:
-                raise HTTPException(status_code=504, detail=f"Service timeout: {url}")
-
-        except httpx.HTTPStatusError as e:
-            logger.warning(
-                "Service returned error status",
-                url=url,
-                status_code=e.response.status_code,
-                attempt=attempt + 1,
-            )
-            if attempt == service_config.max_retries:
-                raise HTTPException(
-                    status_code=e.response.status_code,
-                    detail=f"Service error: {e.response.text}",
-                )
-
-        except Exception as e:
-            logger.error(
-                "Service request failed", url=url, error=str(e), attempt=attempt + 1
-            )
-            if attempt == service_config.max_retries:
-                raise HTTPException(
-                    status_code=503, detail=f"Service unavailable: {url}"
-                )
-
-        # Wait before retry
-        if attempt < service_config.max_retries:
-            import asyncio
-
-            wait_time = service_config.retry_backoff * (2**attempt)
-            await asyncio.sleep(wait_time)
-
-    # This should never be reached due to the retry logic, but satisfies type checker
-    raise HTTPException(
-        status_code=503, detail=f"Service unavailable after all retries: {url}"
-    )
-
-
-async def check_service_health(service_name: str, service_config) -> Dict[str, Any]:
-    """Check health of a single service"""
-    try:
-        result = await make_service_request(service_config, "health", "GET")
-        return {
-            "service": service_name,
-            "status": "healthy",
-            "url": service_config.url,
-            "response": result,
-        }
-    except Exception as e:
-        return {
-            "service": service_name,
-            "status": "unhealthy",
-            "url": service_config.url,
-            "error": str(e),
-        }
-
-
-async def check_all_services_health() -> Dict[str, Any]:
-    """Check health of all services"""
-    services = {
-        "preprocessing": settings.preprocessing_service,
-        "sentiment": settings.sentiment_service,
-        "summarization": settings.summarization_service,
-    }
-
-    results = {}
-    for service_name, service_config in services.items():
-        results[service_name] = await check_service_health(service_name, service_config)
-
-    return results
-
-
 # Health check endpoints
 @app.get("/health")
 async def gateway_health():
@@ -289,6 +110,8 @@ async def gateway_health():
 @app.get("/services/status")
 async def services_status():
     """Check status of all backend services"""
+    logger = get_logger()  # Get logger when needed
+
     try:
         results = await check_all_services_health()
 
@@ -323,78 +146,6 @@ async def sentiment_health():
 async def summarization_health():
     """Route to summarization service health"""
     return await make_service_request(settings.summarization_service, "health", "GET")
-
-
-@app.post("/preprocessing/clean", response_model=CleanedTextResponse)
-async def clean_text(request: TextInput):
-    """Clean text via preprocessing service"""
-    try:
-        result = await make_service_request(
-            settings.preprocessing_service,
-            "clean",
-            "POST",
-            json_data=request.model_dump(),
-        )
-        return CleanedTextResponse(**result)
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error("Failed to clean text", error=str(e))
-        raise HTTPException(status_code=500, detail="Text cleaning failed")
-
-
-@app.post("/preprocessing/tokenize", response_model=TokenizedTextResponse)
-async def tokenize_text(request: TextInput):
-    """Tokenize text via preprocessing service"""
-    try:
-        result = await make_service_request(
-            settings.preprocessing_service,
-            "tokenize",
-            "POST",
-            json_data=request.model_dump(),
-        )
-        return TokenizedTextResponse(**result)
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error("Failed to tokenize text", error=str(e))
-        raise HTTPException(status_code=500, detail="Text tokenization failed")
-
-
-@app.post("/preprocessing/normalize", response_model=NormalizedTextResponse)
-async def normalize_text(request: TextInput):
-    """Normalize text via preprocessing service"""
-    try:
-        result = await make_service_request(
-            settings.preprocessing_service,
-            "normalize",
-            "POST",
-            json_data=request.model_dump(),
-        )
-        return NormalizedTextResponse(**result)
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error("Failed to normalize text", error=str(e))
-        raise HTTPException(status_code=500, detail="Text normalization failed")
-
-
-@app.post("/preprocessing/full-preprocess")
-async def full_preprocess(request: TextInput):
-    """Apply all preprocessing steps via preprocessing service"""
-    try:
-        result = await make_service_request(
-            settings.preprocessing_service,
-            "full-preprocess",
-            "POST",
-            json_data=request.model_dump(),
-        )
-        return result
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error("Failed to preprocess text", error=str(e))
-        raise HTTPException(status_code=500, detail="Full preprocessing failed")
 
 
 if __name__ == "__main__":
