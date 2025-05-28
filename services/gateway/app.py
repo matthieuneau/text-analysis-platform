@@ -6,13 +6,19 @@ from typing import Any, Dict
 import httpx
 import structlog
 import uvicorn
-from config import settings
-from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from ..preprocessing.app import (
+    CleanedTextResponse,
+    NormalizedTextResponse,
+    TextInput,
+    TokenizedTextResponse,
+)
+from .settings import settings
 
-# Configure structured logging
+
 def setup_logging():
     """Configure structured logging"""
     if settings.log_format == "json":
@@ -44,9 +50,9 @@ def setup_logging():
     return structlog.get_logger()
 
 
-# Global HTTP client
-http_client: httpx.AsyncClient | None = None
-logger = None
+# TODO: figure out how to type to allow to be temporarily None
+http_client: httpx.AsyncClient = None  # type: ignore
+logger: structlog.stdlib.BoundLogger = None  # type: ignore
 
 
 @asynccontextmanager
@@ -113,7 +119,6 @@ app.add_middleware(
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     """Log all incoming requests"""
-    start_time = structlog.get_logger().info
 
     logger.info(
         "Request started",
@@ -170,17 +175,15 @@ async def general_exception_handler(request: Request, exc: Exception):
     )
 
 
-# Helper functions
 async def make_service_request(
     service_config,
     endpoint: str,
     method: str = "GET",
-    json_data: Dict = None,
-    params: Dict = None,
+    json_data: Dict | None = None,
+    params: Dict | None = None,
 ) -> Dict[str, Any]:
     """Make a request to a service with retry logic"""
     url = f"{service_config.url.rstrip('/')}/{endpoint.lstrip('/')}"
-
     for attempt in range(service_config.max_retries + 1):
         try:
             if method.upper() == "GET":
@@ -235,6 +238,11 @@ async def make_service_request(
 
             wait_time = service_config.retry_backoff * (2**attempt)
             await asyncio.sleep(wait_time)
+
+    # This should never be reached due to the retry logic, but satisfies type checker
+    raise HTTPException(
+        status_code=503, detail=f"Service unavailable after all retries: {url}"
+    )
 
 
 async def check_service_health(service_name: str, service_config) -> Dict[str, Any]:
@@ -315,6 +323,78 @@ async def sentiment_health():
 async def summarization_health():
     """Route to summarization service health"""
     return await make_service_request(settings.summarization_service, "health", "GET")
+
+
+@app.post("/preprocessing/clean", response_model=CleanedTextResponse)
+async def clean_text(request: TextInput):
+    """Clean text via preprocessing service"""
+    try:
+        result = await make_service_request(
+            settings.preprocessing_service,
+            "clean",
+            "POST",
+            json_data=request.model_dump(),
+        )
+        return CleanedTextResponse(**result)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to clean text", error=str(e))
+        raise HTTPException(status_code=500, detail="Text cleaning failed")
+
+
+@app.post("/preprocessing/tokenize", response_model=TokenizedTextResponse)
+async def tokenize_text(request: TextInput):
+    """Tokenize text via preprocessing service"""
+    try:
+        result = await make_service_request(
+            settings.preprocessing_service,
+            "tokenize",
+            "POST",
+            json_data=request.model_dump(),
+        )
+        return TokenizedTextResponse(**result)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to tokenize text", error=str(e))
+        raise HTTPException(status_code=500, detail="Text tokenization failed")
+
+
+@app.post("/preprocessing/normalize", response_model=NormalizedTextResponse)
+async def normalize_text(request: TextInput):
+    """Normalize text via preprocessing service"""
+    try:
+        result = await make_service_request(
+            settings.preprocessing_service,
+            "normalize",
+            "POST",
+            json_data=request.model_dump(),
+        )
+        return NormalizedTextResponse(**result)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to normalize text", error=str(e))
+        raise HTTPException(status_code=500, detail="Text normalization failed")
+
+
+@app.post("/preprocessing/full-preprocess")
+async def full_preprocess(request: TextInput):
+    """Apply all preprocessing steps via preprocessing service"""
+    try:
+        result = await make_service_request(
+            settings.preprocessing_service,
+            "full-preprocess",
+            "POST",
+            json_data=request.model_dump(),
+        )
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to preprocess text", error=str(e))
+        raise HTTPException(status_code=500, detail="Full preprocessing failed")
 
 
 if __name__ == "__main__":
