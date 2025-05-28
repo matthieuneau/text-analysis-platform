@@ -5,15 +5,14 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from services.gateway.routes import router
+from services.gateway.settings import settings
 from services.gateway.utils import (
     check_all_services_health,
     get_logger,  # Import the getter function instead
     lifespan,
     make_service_request,
 )
-
-from .routes import router
-from .settings import settings
 
 app = FastAPI(
     title=settings.app_name,
