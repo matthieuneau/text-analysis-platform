@@ -12,6 +12,14 @@ from services.preprocessing.app import (
 )
 from services.sentiment_analysis.app import SentimentResponse
 from services.sentiment_analysis.app import TextInput as SentimentTextInput
+from services.summarization.app import (
+    KeywordInput,
+    KeywordsResponse,
+    SummaryResponse,
+)
+from services.summarization.app import (
+    TextInput as SummarizationTextInput,
+)
 
 logger = get_logger()
 router = APIRouter()
@@ -122,3 +130,73 @@ async def get_sentiment_model_info():
     except Exception as e:
         logger.error("Failed to get model info", error=str(e))
         raise HTTPException(status_code=500, detail="Failed to get model information")
+
+
+@router.post("/summarization/summarize", response_model=SummaryResponse)
+async def summarize_text(request: SummarizationTextInput):
+    """Summarize text via summarization service"""
+    try:
+        result = await make_service_request(
+            settings.summarization_service,
+            "summarize",
+            "POST",
+            json_data=request.model_dump(),
+        )
+        return SummaryResponse(**result)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to summarize text", error=str(e))
+        raise HTTPException(status_code=500, detail="Text summarization failed")
+
+
+@router.post("/summarization/extract-keywords", response_model=KeywordsResponse)
+async def extract_keywords(request: KeywordInput):
+    """Extract keywords from text via summarization service"""
+    try:
+        result = await make_service_request(
+            settings.summarization_service,
+            "extract-keywords",
+            "POST",
+            json_data=request.model_dump(),
+        )
+        return KeywordsResponse(**result)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to extract keywords", error=str(e))
+        raise HTTPException(status_code=500, detail="Keyword extraction failed")
+
+
+@router.get("/summarization/model-info")
+async def get_summarization_model_info():
+    """Get summarization model information"""
+    try:
+        result = await make_service_request(
+            settings.summarization_service,
+            "model-info",
+            "GET",
+        )
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to get summarization model info", error=str(e))
+        raise HTTPException(status_code=500, detail="Failed to get model information")
+
+
+@router.get("/summarization/ready")
+async def check_summarization_readiness():
+    """Check if summarization service is ready"""
+    try:
+        result = await make_service_request(
+            settings.summarization_service,
+            "ready",
+            "GET",
+        )
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("Failed to check summarization service readiness", error=str(e))
+        raise HTTPException(status_code=500, detail="Failed to check service readiness")
