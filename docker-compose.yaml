@@ -1,0 +1,49 @@
+version: "3.8"
+
+services:
+  gateway:
+    build:
+      context: .
+      dockerfile: services/gateway/Dockerfile
+    ports:
+      - "8000:8000"
+    depends_on:
+      - preprocessing
+      - sentiment_analysis
+      - summarization
+    networks:
+      - app-network
+    environment:
+      - PREPROCESSING_URL=http://preprocessing:8000
+      - SENTIMENT_URL=http://sentiment_analysis:8000
+      - SUMMARIZATION_URL=http://summarization:8000
+    
+  preprocessing:
+    build:
+      context: .
+      dockerfile: services/preprocessing/Dockerfile
+    # No ports exposed - only internal communication
+    networks:
+      - app-network
+
+  sentiment_analysis:
+    build:
+      context: .
+      dockerfile: services/sentiment_analysis/Dockerfile
+    # No ports exposed - only internal communication
+    networks:
+      - app-network
+
+  summarization:
+    build:
+      context: .
+      dockerfile: services/summarization/Dockerfile
+    # No ports exposed - only internal communication
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+    
+    
