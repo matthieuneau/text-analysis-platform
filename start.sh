@@ -35,12 +35,12 @@ tmux send-keys -t $SESSION_NAME:1 "uvicorn services.gateway.app:app --host 0.0.0
 # Preprocessing (window 2)
 tmux send-keys -t $SESSION_NAME:2 "cd ~/text-analysis-platform" C-m
 tmux send-keys -t $SESSION_NAME:2 "source .venv/bin/activate" C-m
-tmux send-keys -t $SESSION_NAME:2 "uvicorn services.preprocessing.app:app --host 0.0.0.0 --port 8001 --reload" C-m
+tmux send-keys -t $SESSION_NAME:2 "uvicorn .app:app --host 0.0.0.0 --port 8001 --reload" C-m
 
 # Sentiment Analysis (window 3)
 tmux send-keys -t $SESSION_NAME:3 "cd ~/text-analysis-platform" C-m
 tmux send-keys -t $SESSION_NAME:3 "source .venv/bin/activate" C-m
-tmux send-keys -t $SESSION_NAME:3 "uvicorn services.sentiment_analysis.app:app --host 0.0.0.0 --port 8002 --reload" C-m
+tmux send-keys -t $SESSION_NAME:3 "uvicorn .app:app --host 0.0.0.0 --port 8002 --reload" C-m
 
 # Summarization (window 4)
 tmux send-keys -t $SESSION_NAME:4 "cd ~/text-analysis-platform" C-m

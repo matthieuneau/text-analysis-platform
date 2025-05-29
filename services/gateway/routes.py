@@ -1,17 +1,5 @@
 from fastapi import APIRouter, HTTPException
 
-from services.gateway.settings import settings
-from services.gateway.utils import get_logger, make_service_request
-from services.preprocessing.app import (
-    CleanedTextResponse,
-    NormalizedTextResponse,
-    TokenizedTextResponse,
-)
-from services.preprocessing.app import (
-    TextInput as PreprocessingTextInput,
-)
-from services.sentiment_analysis.app import SentimentResponse
-from services.sentiment_analysis.app import TextInput as SentimentTextInput
 from services.summarization.app import (
     KeywordInput,
     KeywordsResponse,
@@ -20,6 +8,19 @@ from services.summarization.app import (
 from services.summarization.app import (
     TextInput as SummarizationTextInput,
 )
+
+from .schemas import (
+    CleanedTextResponse,
+    NormalizedTextResponse,
+    SentimentResponse,
+    TokenizedTextResponse,
+)
+
+# Creating 2 aliases for now, might change later
+from .schemas import TextInput as PreprocessingTextInput
+from .schemas import TextInput as SentimentTextInput
+from .settings import settings
+from .utils import get_logger, make_service_request
 
 logger = get_logger()
 router = APIRouter()

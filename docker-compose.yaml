@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   gateway:
     build:
@@ -14,9 +12,9 @@ services:
     networks:
       - app-network
     environment:
-      - PREPROCESSING_URL=http://preprocessing:8000
-      - SENTIMENT_URL=http://sentiment_analysis:8000
-      - SUMMARIZATION_URL=http://summarization:8000
+      - PREPROCESSING_SERVICE_URL=http://preprocessing:8000
+      - SENTIMENT_SERVICE_URL=http://sentiment_analysis:8000
+      - SUMMARIZATION_SERVICE_URL=http://summarization:8000
     
   preprocessing:
     build:

@@ -1,6 +1,6 @@
 import logging
 from contextlib import asynccontextmanager
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 import torch
 import uvicorn
@@ -49,11 +49,11 @@ class TextInput(BaseModel):
     # options: dict = Field(default_factory=dict, description="Analysis options")
 
 
-class BatchTextInput(BaseModel):
-    texts: List[str] = Field(
-        ..., description="List of texts to analyze", min_length=1, max_length=100
-    )
-    # options: dict = Field(default_factory=dict, description="Analysis options")
+# class BatchTextInput(BaseModel):
+#     texts: List[str] = Field(
+#         ..., description="List of texts to analyze", min_length=1, max_length=100
+#     )
+#     # options: dict = Field(default_factory=dict, description="Analysis options")
 
 
 class SentimentResponse(BaseModel):
@@ -63,9 +63,9 @@ class SentimentResponse(BaseModel):
     scores: Dict[str, float]
 
 
-class BatchSentimentResponse(BaseModel):
-    results: List[SentimentResponse]
-    total_processed: int
+# class BatchSentimentResponse(BaseModel):
+#     results: List[SentimentResponse]
+#     total_processed: int
 
 
 # Model initialization

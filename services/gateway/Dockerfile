@@ -3,11 +3,11 @@ WORKDIR /app
 
 # Copy requirements and install dependencies
 COPY pyproject.toml uv.lock ./
-RUN pip install uv && uv sync --frozen
+RUN pip install uv && uv sync --frozen    
 
 # Copy service code
 COPY services/gateway .
 
 EXPOSE 8000
 
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uv", "run", "uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
