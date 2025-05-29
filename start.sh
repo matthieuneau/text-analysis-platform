@@ -17,12 +17,12 @@ echo "Creating new tmux session: $SESSION_NAME"
 tmux new-session -d -s $SESSION_NAME
 
 # Rename the first window
-tmux rename-window -t $SESSION_NAME:0 "gateway"
+tmux rename-window -t $SESSION_NAME:1 "gateway"
 
 # Create additional windows
-tmux new-window -t $SESSION_NAME:1 -n "preprocessing"
-tmux new-window -t $SESSION_NAME:2 -n "sentiment"
-tmux new-window -t $SESSION_NAME:3 -n "summarization"
+tmux new-window -t $SESSION_NAME:2 -n "preprocessing"
+tmux new-window -t $SESSION_NAME:3 -n "sentiment"
+tmux new-window -t $SESSION_NAME:4 -n "summarization"
 
 # Send commands to each window
 echo "Starting services..."
