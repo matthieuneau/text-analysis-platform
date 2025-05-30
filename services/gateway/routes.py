@@ -1,26 +1,22 @@
 from fastapi import APIRouter, HTTPException
-
-from services.summarization.app import (
+from schemas import (
+    CleanedTextResponse,
     KeywordInput,
     KeywordsResponse,
-    SummaryResponse,
-)
-from services.summarization.app import (
-    TextInput as SummarizationTextInput,
-)
-
-from .schemas import (
-    CleanedTextResponse,
     NormalizedTextResponse,
     SentimentResponse,
+    SummaryResponse,
     TokenizedTextResponse,
 )
 
 # Creating 2 aliases for now, might change later
-from .schemas import TextInput as PreprocessingTextInput
-from .schemas import TextInput as SentimentTextInput
-from .settings import settings
-from .utils import get_logger, make_service_request
+from schemas import TextInput as PreprocessingTextInput
+from schemas import TextInput as SentimentTextInput
+from schemas import (
+    TextInput as SummarizationTextInput,
+)
+from settings import settings
+from utils import get_logger, make_service_request
 
 logger = get_logger()
 router = APIRouter()

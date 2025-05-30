@@ -7,8 +7,7 @@ from typing import Any, Dict
 import httpx
 import structlog
 from fastapi import FastAPI, HTTPException
-
-from services.gateway.settings import settings
+from settings import settings
 
 # Global variables
 http_client: httpx.AsyncClient = None  # type: ignore

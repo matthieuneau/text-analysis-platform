@@ -14,10 +14,10 @@ fi
 echo "Stopping all services in session '$SESSION_NAME'..."
 
 # Send Ctrl+C to all windows to stop the services
-tmux send-keys -t $SESSION_NAME:0 C-c
 tmux send-keys -t $SESSION_NAME:1 C-c
 tmux send-keys -t $SESSION_NAME:2 C-c
 tmux send-keys -t $SESSION_NAME:3 C-c
+tmux send-keys -t $SESSION_NAME:4 C-c
 
 # Wait a moment for services to shut down gracefully
 sleep 2

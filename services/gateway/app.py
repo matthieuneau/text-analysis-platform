@@ -1,13 +1,11 @@
-# app.py - Updated version
 import structlog
 import uvicorn
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-
-from .routes import router
-from .settings import settings
-from .utils import (
+from routes import router
+from settings import settings
+from utils import (
     check_all_services_health,
     get_logger,  # Import the getter function instead
     lifespan,

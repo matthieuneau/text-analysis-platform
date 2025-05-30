@@ -34,3 +34,29 @@ class SentimentResponse(BaseModel):
     sentiment: str
     confidence: float
     scores: Dict[str, float]
+
+
+class SummaryResponse(BaseModel):
+    original_text: str
+    original_length: int
+    summary: str
+    summary_length: int
+    compression_ratio: float
+
+
+class KeywordsResponse(BaseModel):
+    original_text: str
+    keywords: List[str]
+    total_keywords: int
+
+
+class KeywordInput(BaseModel):
+    text: str = Field(
+        ...,
+        min_length=50,
+        max_length=10000,
+        description="Text to extract keywords from",
+    )
+    num_keywords: int = Field(
+        default=10, ge=1, le=50, description="Number of keywords to extract"
+    )
