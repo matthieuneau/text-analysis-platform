@@ -61,6 +61,16 @@ services:
       interval: 10s
       start_period: 60s   # Loading ML model takes some time
 
+  prometheus:
+    image:
+      prom/prometheus:latest
+    ports:
+      - "9000:9000"
+    volumes:
+      - ./services/gateway/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - app-network
+
 networks:
   app-network:
     driver: bridge

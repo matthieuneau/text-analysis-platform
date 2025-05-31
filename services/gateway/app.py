@@ -1,8 +1,17 @@
+import time
+
 import structlog
 import uvicorn
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from prometheus_client import (
+    CONTENT_TYPE_LATEST,
+    Counter,
+    Gauge,
+    Histogram,
+    generate_latest,
+)
 from routes import router
 from settings import settings
 from utils import (
@@ -12,6 +21,36 @@ from utils import (
     make_service_request,
 )
 
+# Prometheus metrics
+REQUEST_COUNT = Counter(
+    "gateway_http_requests_total",
+    "Total HTTP requests",
+    ["method", "endpoint", "status_code"],
+)
+
+REQUEST_DURATION = Histogram(
+    "gateway_http_request_duration_seconds",
+    "HTTP request duration in seconds",
+    ["method", "endpoint"],
+)
+
+ACTIVE_REQUESTS = Gauge("gateway_active_requests", "Number of active HTTP requests")
+
+SERVICE_UP = Gauge(
+    "gateway_service_up", "Service availability (1 = up, 0 = down)", ["service_name"]
+)
+
+BACKEND_REQUEST_COUNT = Counter(
+    "gateway_backend_requests_total",
+    "Total requests to backend services",
+    ["service", "endpoint", "status"],
+)
+
+BACKEND_REQUEST_DURATION = Histogram(
+    "gateway_backend_request_duration_seconds",
+    "Backend service request duration",
+    ["service", "endpoint"],
+)
 app = FastAPI(
     title=settings.app_name,
     version=settings.version,
@@ -21,6 +60,68 @@ app = FastAPI(
 )
 
 app.include_router(router)
+
+
+def get_endpoint_path(request: Request) -> str:
+    """Extract a clean endpoint path for metrics"""
+    path = request.url.path
+    # Group dynamic paths for better metrics
+    if path.startswith("/api/"):
+        return path
+    elif path in ["/health", "/services/status"]:
+        return path
+    elif path.startswith("/preprocessing/"):
+        return "/preprocessing/*"
+    elif path.startswith("/sentiment/"):
+        return "/sentiment/*"
+    elif path.startswith("/summarization/"):
+        return "/summarization/*"
+    else:
+        return "/other"
+
+
+# Middleware for metrics collection
+@app.middleware("http")
+async def metrics_middleware(request: Request, call_next):
+    """Collect Prometheus metrics for all requests"""
+    if request.url.path == "/metrics":
+        # Don't track metrics endpoint itself
+        return await call_next(request)
+
+    # Track active requests
+    ACTIVE_REQUESTS.inc()
+
+    # Get clean endpoint for metrics
+    endpoint = get_endpoint_path(request)
+    method = request.method
+
+    # Start timing
+    start_time = time.time()
+
+    try:
+        response = await call_next(request)
+        status_code = str(response.status_code)
+
+        # Record metrics
+        REQUEST_COUNT.labels(
+            method=method, endpoint=endpoint, status_code=status_code
+        ).inc()
+
+        return response
+
+    except Exception as e:
+        # Record error metrics
+        REQUEST_COUNT.labels(method=method, endpoint=endpoint, status_code="500").inc()
+        raise
+
+    finally:
+        # Record request duration
+        duration = time.time() - start_time
+        REQUEST_DURATION.labels(method=method, endpoint=endpoint).observe(duration)
+
+        # Decrease active requests
+        ACTIVE_REQUESTS.dec()
+
 
 # Add CORS middleware
 app.add_middleware(
@@ -143,6 +244,13 @@ async def sentiment_health():
 async def summarization_health():
     """Route to summarization service health"""
     return await make_service_request(settings.summarization_service, "health", "GET")
+
+
+# Prometheus metrics endpoint
+@app.get("/metrics")
+async def metrics():
+    """Prometheus metrics endpoint"""
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 
 if __name__ == "__main__":
