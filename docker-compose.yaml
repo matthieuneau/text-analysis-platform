@@ -6,9 +6,12 @@ services:
     ports:
       - "8000:8000"
     depends_on:
-      - preprocessing
-      - sentiment_analysis
-      - summarization
+      preprocessing:
+        condition: service_healthy
+      sentiment_analysis:
+        condition: service_healthy
+      summarization:
+        condition: service_healthy
     networks:
       - app-network
     environment:
@@ -23,6 +26,12 @@ services:
     # No ports exposed - only internal communication
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      retries: 5
+      timeout: 5s
+      interval: 10s
+      start_period: 10s
 
   sentiment_analysis:
     build:
@@ -31,6 +40,12 @@ services:
     # No ports exposed - only internal communication
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      retries: 5
+      timeout: 5s
+      interval: 10s
+      start_period: 60s   # Loading ML model takes some time
 
   summarization:
     build:
@@ -39,6 +54,12 @@ services:
     # No ports exposed - only internal communication
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      retries: 5
+      timeout: 5s
+      interval: 10s
+      start_period: 60s   # Loading ML model takes some time
 
 networks:
   app-network:
