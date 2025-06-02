@@ -19,14 +19,14 @@ class Settings(BaseSettings):
     # Gateway configuration
     app_name: str = "Text Analysis Gateway"
     version: str = "1.0.0"
-    debug: bool = False
+    debug: bool = True
 
     # Server configuration
     host: str = "0.0.0.0"
     port: int = 8000
 
     # Logging configuration
-    log_level: str = "INFO"
+    log_level: str = "DEBUG"
     log_format: str = "json"  # json or text
 
     # Service configurations
