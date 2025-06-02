@@ -1,0 +1,94 @@
+name: Build and Push Docker Images
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [gateway, preprocessing, sentiment_analysis, summarization]
+        target: [production, development]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata for production
+        id: meta-prod
+        if: matrix.target == 'production'
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Extract metadata for development
+        id: meta-dev
+        if: matrix.target == 'development'
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}
+          tags: |
+            type=ref,event=branch,suffix=-dev
+            type=ref,event=pr,suffix=-dev
+            type=sha,prefix={{branch}}-,suffix=-dev
+            type=raw,value=dev,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: services/${{ matrix.service }}/Dockerfile
+          target: ${{ matrix.target }}
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ matrix.target == 'production' && steps.meta-prod.outputs.tags || steps.meta-dev.outputs.tags }}
+          labels: ${{ matrix.target == 'production' && steps.meta-prod.outputs.labels || steps.meta-dev.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.service }}-${{ matrix.target }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}-${{ matrix.target }}
+
+  security-scan:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.event_name != 'pull_request'
+    strategy:
+      matrix:
+        service: [gateway, preprocessing, sentiment_analysis, summarization]
+        target: [production, development]
+    
+    steps:
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}:${{ matrix.target == "production" && "latest" || "dev" }}'
+          format: 'sarif'
+          output: 'trivy-results-${{ matrix.service }}-${{ matrix.target }}.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v2
+        if: always()
+        with:
+          sarif_file: 'trivy-results-${{ matrix.service }}-${{ matrix.target }}.sarif'
