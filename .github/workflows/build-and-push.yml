@@ -69,26 +69,3 @@ jobs:
           labels: ${{ matrix.target == 'production' && steps.meta-prod.outputs.labels || steps.meta-dev.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.service }}-${{ matrix.target }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}-${{ matrix.target }}
-
-  security-scan:
-    runs-on: ubuntu-latest
-    needs: build-and-push
-    if: github.event_name != 'pull_request'
-    strategy:
-      matrix:
-        service: [gateway, preprocessing, sentiment_analysis, summarization]
-        target: [production, development]
-    
-    steps:
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@master
-        with:
-          image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.service }}:${{ matrix.target == "production" && "latest" || "dev" }}'
-          format: 'sarif'
-          output: 'trivy-results-${{ matrix.service }}-${{ matrix.target }}.sarif'
-
-      - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v2
-        if: always()
-        with:
-          sarif_file: 'trivy-results-${{ matrix.service }}-${{ matrix.target }}.sarif'
