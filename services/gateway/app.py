@@ -11,8 +11,12 @@ from prometheus_client import (
     CONTENT_TYPE_LATEST,
     generate_latest,
 )
-from routes import router
 from settings import settings
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
+
+# In your main app file (main.py or app.py)
 from utils import (
     check_all_services_health,
     get_logger,  # Import the getter function instead
@@ -27,6 +31,14 @@ app = FastAPI(
     lifespan=lifespan,
     debug=settings.debug,
 )
+
+# Initialize rate limiter
+limiter = Limiter(key_func=get_remote_address)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Import routes after setting up limiter to avoid circular imports)
+from routes import router  # noqa: E402
 
 app.include_router(router)
 
