@@ -39,6 +39,8 @@ services:
       dockerfile: services/sentiment_analysis/Dockerfile
       target: development
     # No ports exposed - only internal communication
+    volumes:
+      - sentiment-models:/root/.cache/huggingface  # HF default cache location
     networks:
       - app-network
     healthcheck:
@@ -56,6 +58,8 @@ services:
     # No ports exposed - only internal communication
     networks:
       - app-network
+    volumes:
+      - summarization-models:/root/.cache/huggingface
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       retries: 5
@@ -70,11 +74,17 @@ services:
       - "9090:9090"
     volumes:
       - ./services/gateway/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
     networks:
       - app-network
 
 networks:
   app-network:
     driver: bridge
+  
+volumes:
+  prometheus-data:
+  summarization-models:
+  sentiment-models:
     
     
