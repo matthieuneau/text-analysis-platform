@@ -1,0 +1,1 @@
+obsolete units package symbol as of version 9. 0, unit functionality is built into mathematica is the fundamental cgs unit of mass. - to use, you first need to load the units package using needs [ " units ` " ]. - is equivalent to kilogram / 1000 ( si units ). - convert [ n gram, newunits ] converts n gram to a form involving units newunits. - is typically abbreviated as g.
