@@ -89,6 +89,25 @@ services:
     networks:
       - app-network
 
+  k6:
+    image: grafana/k6:latest
+    command: run /k6-tests/load-test.js
+    volumes:
+      - ./k6-tests:/k6-tests
+      - ./k6-tests/test-data:/k6-tests/test-data
+    networks:
+      - app-network
+    depends_on:
+      gateway:
+        condition: service_healthy
+      prometheus:
+        condition: service_healthy
+    environment:
+      - K6_PROMETHEUS_RW_SERVER_URL=http://prometheus:9090/api/v1/write
+      - K6_PROMETHEUS_RW_TREND_AS_NATIVE_HISTOGRAM=true
+    profiles:
+      - load-test  # Only run when explicitly requested
+
 networks:
   app-network:
     driver: bridge
