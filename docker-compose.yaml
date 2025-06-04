@@ -94,7 +94,6 @@ services:
     command: run /k6-tests/load-test.js
     volumes:
       - ./k6-tests:/k6-tests
-      - ./k6-tests/test-data:/k6-tests/test-data
     networks:
       - app-network
     depends_on:
