@@ -15,8 +15,6 @@ from settings import settings
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
-
-# In your main app file (main.py or app.py)
 from utils import (
     check_all_services_health,
     get_logger,  # Import the getter function instead

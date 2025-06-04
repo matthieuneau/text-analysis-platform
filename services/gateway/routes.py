@@ -1,5 +1,5 @@
 from app import limiter
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from schemas import (
     CleanedTextResponse,
     KeywordInput,
@@ -150,14 +150,14 @@ async def summarize_text(request: SummarizationTextInput):
 
 @router.post("/summarization/extract-keywords", response_model=KeywordsResponse)
 @limiter.limit("2/minute")
-async def extract_keywords(request: KeywordInput):
+async def extract_keywords(keyword_input: KeywordInput, request: Request):
     """Extract keywords from text via summarization service"""
     try:
         result = await make_service_request(
             settings.summarization_service,
             "extract-keywords",
             "POST",
-            json_data=request.model_dump(),
+            json_data=keyword_input.model_dump(),
         )
         return KeywordsResponse(**result)
     except HTTPException:
