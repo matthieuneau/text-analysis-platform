@@ -1,12 +1,20 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from sqlalchemy.orm import Session
+from datetime import datetime
 
-from services.auth.app import get_admin_user, get_client_ip, get_current_user
-from services.auth.crud import (
+from config import ACCESS_TOKEN_EXPIRE_MINUTES, ALGORITHM, SECRET_KEY
+from crud import (
     create_user,
     get_db,
     get_user_by_id,
+    get_user_by_username,
+    log_audit_event,
+    update_user_login,
 )
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from jose import JWTError, jwt  # type: ignore
+from models import AuditLog, RefreshToken, User
+from security import create_access_token, create_refresh_token, verify_password
+from sqlalchemy.orm import Session
+
 from services.auth.schemas import (
     TokenRefresh,
     TokenResponse,
@@ -14,6 +22,8 @@ from services.auth.schemas import (
     UserProfile,
     UserRegister,
 )
+from services.auth.utils import get_admin_user, get_client_ip
+from services.gateway.utils import get_current_user
 
 router = APIRouter()
 
@@ -152,6 +162,10 @@ async def refresh_access_token(
             )
 
         user_id = payload.get("user_id")
+        if not user_id or not isinstance(user_id, int):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload"
+            )
 
         # Check if refresh token exists in database and is not revoked
         db_token = (
@@ -159,7 +173,7 @@ async def refresh_access_token(
             .filter(
                 RefreshToken.token == token_data.refresh_token,
                 RefreshToken.user_id == user_id,
-                RefreshToken.is_revoked == False,
+                ~RefreshToken.is_revoked,
                 RefreshToken.expires_at > datetime.utcnow(),
             )
             .first()
@@ -238,7 +252,7 @@ async def logout_user(
         .filter(
             RefreshToken.token == token_data.refresh_token,
             RefreshToken.user_id == current_user.id,
-            RefreshToken.is_revoked == False,
+            ~RefreshToken.is_revoked,
         )
         .first()
     )
@@ -298,7 +312,7 @@ async def get_all_users(
     }
 
 
-@app.put("/admin/users/{user_id}/toggle-active")
+@router.put("/admin/users/{user_id}/toggle-active")
 async def toggle_user_active_status(
     user_id: int,
     admin_user: User = Depends(get_admin_user),
@@ -361,7 +375,7 @@ async def health_check(db: Session = Depends(get_db)):
 async def get_auth_stats(db: Session = Depends(get_db)):
     """Public statistics about the auth service"""
     total_users = db.query(User).count()
-    active_users = db.query(User).filter(User.is_active == True).count()
+    active_users = db.query(User).filter(User.is_active).count()
 
     return {
         "total_users": total_users,

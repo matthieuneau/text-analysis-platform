@@ -2,7 +2,17 @@ import uuid
 from datetime import datetime, timedelta
 
 import bcrypt
+from config import (
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    ALGORITHM,
+    REFRESH_TOKEN_EXPIRE_DAYS,
+    SECRET_KEY,
+)
+from fastapi import HTTPException, status
+from jose import JWTError, jwt  # type: ignore
+from models import RefreshToken, User
 from schemas import TokenPayload
+from sqlalchemy.orm import Session
 
 
 def hash_password(password: str) -> str:
@@ -36,7 +46,10 @@ def create_access_token(user: User) -> str:
 
 
 def create_refresh_token(
-    user: User, db: Session, user_agent: str = None, ip_address: str = None
+    user: User,
+    db: Session,
+    user_agent: str | None = None,
+    ip_address: str | None = None,
 ) -> str:
     """Create refresh token and store in database"""
     expires_at = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
@@ -84,7 +97,7 @@ def verify_jwt_token(token: str) -> TokenPayload:
             exp=datetime.fromtimestamp(payload["exp"]),
         )
 
-    except JWTError as e:
+    except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token",

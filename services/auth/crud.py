@@ -2,11 +2,13 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import HTTPException, status
+from models import AuditLog, User
+from schemas import UserRegister
+from security import hash_password
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from services.auth.app import AuditLog, User
-from services.auth.schemas import UserRegister
+from services.auth.database import SessionLocal
 
 
 def get_db():
@@ -21,7 +23,7 @@ def get_db():
 def get_user_by_id(db: Session, user_id: int) -> Optional[User]:
     """Get user by ID with caching potential"""
     # TODO: Add caching layer here later
-    return db.query(User).filter(User.id == user_id, User.is_active == True).first()
+    return db.query(User).filter(User.id == user_id, User.is_active).first()
 
 
 def get_user_by_username(db: Session, username: str) -> Optional[User]:
@@ -84,7 +86,7 @@ def increment_api_calls(db: Session, user: User):
         user.api_calls_today = 1
         user.api_calls_reset_date = datetime.utcnow()
     else:
-        user.api_calls_today += 1
+        setattr(user, "api_calls_today", user.api_calls_today + 1)
 
     db.commit()
 
@@ -95,9 +97,9 @@ def log_audit_event(
     username: Optional[str],
     event_type: str,
     success: bool,
-    ip_address: str = None,
-    user_agent: str = None,
-    details: str = None,
+    ip_address: str | None = None,
+    user_agent: str | None = None,
+    details: str | None = None,
 ):
     """Log security audit event"""
     audit_log = AuditLog(
