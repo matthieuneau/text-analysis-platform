@@ -11,7 +11,8 @@ from fastapi.security import HTTPAuthorizationCredentials
 from settings import settings
 from sqlalchemy.orm import Session
 
-from services.auth.crud import get_db, get_user_by_id
+from services.auth.crud import get_user_by_id
+from services.auth.database import get_db
 from services.auth.models import User
 from services.auth.security import verify_jwt_token
 from services.auth.utils import security

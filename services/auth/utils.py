@@ -1,13 +1,9 @@
-# ============================================================================
-# AUTHENTICATION DEPENDENCIES SECTION
-# TODO: Move to dependencies.py later
-# ============================================================================
-
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPBearer
 from sqlalchemy.orm import Session
 
-from services.auth.crud import get_db, get_user_by_id
+from services.auth.crud import get_user_by_id
+from services.auth.database import get_db
 from services.auth.models import User
 from services.auth.security import verify_jwt_token
 from services.gateway.utils import get_current_user
@@ -36,7 +32,7 @@ async def get_premium_user(current_user: User = Depends(get_current_user)) -> Us
 
 async def get_optional_user(
     request: Request, db: Session = Depends(get_db)
-) -> Optional[User]:
+) -> User | None:
     """Optional authentication - returns None if no valid token"""
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):

@@ -1,5 +1,6 @@
 import uvicorn
 from fastapi import FastAPI
+from routes import router
 
 app = FastAPI(
     title="Authentication Service",
@@ -8,6 +9,8 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
+app.include_router(router, tags=["Authentication"])
 
 
 if __name__ == "__main__":

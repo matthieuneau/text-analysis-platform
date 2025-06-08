@@ -3,7 +3,6 @@ from datetime import datetime
 from config import ACCESS_TOKEN_EXPIRE_MINUTES, ALGORITHM, SECRET_KEY
 from crud import (
     create_user,
-    get_db,
     get_user_by_id,
     get_user_by_username,
     log_audit_event,
@@ -15,6 +14,7 @@ from models import AuditLog, RefreshToken, User
 from security import create_access_token, create_refresh_token, verify_password
 from sqlalchemy.orm import Session
 
+from services.auth.database import get_db
 from services.auth.schemas import (
     TokenRefresh,
     TokenResponse,

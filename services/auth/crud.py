@@ -8,17 +8,6 @@ from security import hash_password
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from services.auth.database import SessionLocal
-
-
-def get_db():
-    """Database dependency for FastAPI"""
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
 
 def get_user_by_id(db: Session, user_id: int) -> Optional[User]:
     """Get user by ID with caching potential"""
@@ -86,7 +75,7 @@ def increment_api_calls(db: Session, user: User):
         user.api_calls_today = 1
         user.api_calls_reset_date = datetime.utcnow()
     else:
-        setattr(user, "api_calls_today", user.api_calls_today + 1)
+        user.api_calls_today += 1
 
     db.commit()
 
