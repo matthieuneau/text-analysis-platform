@@ -60,3 +60,9 @@ class KeywordInput(BaseModel):
     num_keywords: int = Field(
         default=10, ge=1, le=50, description="Number of keywords to extract"
     )
+
+
+class SummarizeResponse(BaseModel):
+    summary: str
+    processing_time: float
+    token_count: int
