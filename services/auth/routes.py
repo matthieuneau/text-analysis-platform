@@ -8,22 +8,20 @@ from crud import (
     log_audit_event,
     update_user_login,
 )
+from database import get_db
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from jose import JWTError, jwt  # type: ignore
+from jose import JWTError, jwt
 from models import AuditLog, RefreshToken, User
-from security import create_access_token, create_refresh_token, verify_password
-from sqlalchemy.orm import Session
-
-from services.auth.database import get_db
-from services.auth.schemas import (
+from schemas import (
     TokenRefresh,
     TokenResponse,
     UserLogin,
     UserProfile,
     UserRegister,
 )
-from services.auth.utils import get_admin_user, get_client_ip
-from services.gateway.utils import get_current_user
+from security import create_access_token, create_refresh_token, verify_password
+from sqlalchemy.orm import Session
+from utils import get_admin_user, get_client_ip, get_current_user
 
 router = APIRouter()
 

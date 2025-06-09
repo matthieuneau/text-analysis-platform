@@ -1,14 +1,45 @@
+from crud import get_user_by_id
+from database import get_db
 from fastapi import Depends, HTTPException, Request, status
-from fastapi.security import HTTPBearer
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from models import User
+from security import verify_jwt_token
 from sqlalchemy.orm import Session
 
-from services.auth.crud import get_user_by_id
-from services.auth.database import get_db
-from services.auth.models import User
-from services.auth.security import verify_jwt_token
-from services.gateway.utils import get_current_user
-
 security = HTTPBearer()
+
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: Session = Depends(get_db),
+) -> User:
+    """
+    Main authentication dependency: JWT + Database verification
+    1. Verify JWT signature and expiration
+    2. Lookup user in database to check current status
+    3. Return active user or raise 401
+    """
+    # Step 1: Verify JWT token
+    token_data = verify_jwt_token(credentials.credentials)
+
+    # Step 2: Database lookup to get current user state
+    user = get_user_by_id(db, token_data.user_id)
+
+    if not user:
+        # User was deleted or deactivated since token was issued
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="User no longer exists"
+        )
+
+    if user.is_active is False:
+        # User was deactivated since token was issued
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="User account is disabled"
+        )
+
+    # TODO: Add token blacklist check here later (for immediate token revocation)
+
+    return user
 
 
 async def get_admin_user(current_user: User = Depends(get_current_user)) -> User:

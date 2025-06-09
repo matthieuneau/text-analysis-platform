@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
+from database import engine
 from sqlalchemy import (
     Boolean,
     DateTime,
@@ -10,8 +11,6 @@ from sqlalchemy import (
     Text,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-
-from services.auth.database import engine
 
 
 class Base(DeclarativeBase):

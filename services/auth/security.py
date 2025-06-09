@@ -9,7 +9,7 @@ from config import (
     SECRET_KEY,
 )
 from fastapi import HTTPException, status
-from jose import JWTError, jwt  # type: ignore
+from jose import JWTError, jwt
 from models import RefreshToken, User
 from schemas import TokenPayload
 from sqlalchemy.orm import Session
