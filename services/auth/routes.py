@@ -343,6 +343,96 @@ async def get_audit_logs(
     return {"logs": logs, "count": len(logs)}
 
 
+@router.put("/admin/users/{user_id}/promote")
+async def promote_user_to_admin(
+    user_id: int,
+    admin: User = Depends(get_admin_user),  # Changed this line
+    db: Session = Depends(get_db),
+):
+    """Admin: Promote user to admin status"""
+    user = get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    if user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="User is already an admin"
+        )
+
+    user.is_admin = True
+    db.commit()
+
+    # Log the promotion
+    log_audit_event(
+        db,
+        admin.id,
+        admin.username,
+        "admin_promotion",
+        True,
+        details=f"admin {admin.username} promoted user {user.username} to admin",
+    )
+
+    return {
+        "message": f"User {user.username} promoted to admin",
+        "user_id": user.id,
+        "is_admin": user.is_admin,
+    }
+
+
+@router.put("/admin/users/{user_id}/demote")
+async def demote_admin_user(
+    user_id: int,
+    admin_user: User = Depends(get_admin_user),
+    db: Session = Depends(get_db),
+):
+    """Admin: Remove admin status from user"""
+    user = get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    if not user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="User is not an admin"
+        )
+
+    # Prevent self-demotion (safety measure)
+    if user.id == admin_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot demote yourself"
+        )
+
+    # Check if this is the last admin (optional safety check)
+    admin_count = db.query(User).filter(User.is_admin).count()
+    if admin_count <= 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot demote the last admin user",
+        )
+
+    user.is_admin = False
+    db.commit()
+
+    # Log the demotion
+    log_audit_event(
+        db,
+        admin_user.id,
+        admin_user.username,
+        "admin_demotion",
+        True,
+        details=f"Demoted user {user.username} (ID: {user.id}) from admin",
+    )
+
+    return {
+        "message": f"User {user.username} demoted from admin",
+        "user_id": user.id,
+        "is_admin": user.is_admin,
+    }
+
+
 # ============================================================================
 # HEALTH CHECK AND UTILITY ROUTES
 # ============================================================================
