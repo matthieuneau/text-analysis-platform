@@ -24,9 +24,16 @@ async def create_initial_admin_user():
 
     db = SessionLocal()
     try:
+        # Check if admin user already exists
+        existing_admin = db.query(User).filter_by(is_admin=True).first()
+        if existing_admin:
+            logger.info("ℹ️ Admin user already exists, skipping creation")
+            return
         # Validate password length
         if len(admin_password) < 8:
-            print("❌ Admin password too short (min 8 chars), skipping admin creation")
+            logger.error(
+                "❌ Admin password too short (min 8 chars), skipping admin creation"
+            )
             return
 
         # Create admin user
@@ -43,14 +50,14 @@ async def create_initial_admin_user():
         db.commit()
         db.refresh(admin_user)
 
-        print("✅ Admin user created successfully!")
-        print(f"   Username: {admin_user.username}")
-        print(f"   Email: {admin_user.email}")
-        print(f"   ID: {admin_user.id}")
+        logger.info("✅ Admin user created successfully!")
+        logger.info(f"   Username: {admin_user.username}")
+        logger.info(f"   Email: {admin_user.email}")
+        logger.info(f"   ID: {admin_user.id}")
 
     except Exception as e:
         db.rollback()
-        print(f"❌ Error creating admin user: {e}")
+        logger.error(f"❌ Error creating admin user: {e}")
     finally:
         db.close()
 
@@ -59,18 +66,19 @@ async def create_initial_admin_user():
 async def lifespan(app: FastAPI):
     """Handle startup and shutdown events"""
     # Startup
-    print("🚀 Starting Authentication Service...")
+    logger.info("🚀 Starting Authentication Service...")
     await create_initial_admin_user()
-    print("✅ Startup complete")
+    logger.info("✅ Startup complete")
 
     yield  # This is where the app runs
 
     # Shutdown (optional cleanup)
-    print("🛑 Shutting down Authentication Service...")
+    logger.info("🛑 Shutting down Authentication Service...")
 
 
 app = FastAPI(
     title="Authentication Service",
+    lifespan=lifespan,
     description="JWT + Database authentication for microservices architecture",
     version="1.0.0",
     docs_url="/docs",

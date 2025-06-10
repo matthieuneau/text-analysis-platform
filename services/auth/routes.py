@@ -334,22 +334,31 @@ async def toggle_user_active_status(
 
 @router.get("/admin/audit-logs")
 async def get_audit_logs(
-    admin_user: User = Depends(get_admin_user),
+    admin_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
     limit: int = 100,
 ):
     """Admin: Get recent audit logs"""
+    if not admin_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied: Admins only"
+        )
     logs = db.query(AuditLog).order_by(AuditLog.timestamp.desc()).limit(limit).all()
     return {"logs": logs, "count": len(logs)}
 
 
-@router.put("/admin/users/{user_id}/promote")
+@router.put("/admin/users/{user_id}/promote-admin")
 async def promote_user_to_admin(
     user_id: int,
-    admin: User = Depends(get_admin_user),  # Changed this line
+    admin_user: User = Depends(get_current_user),  # Changed this line
     db: Session = Depends(get_db),
 ):
     """Admin: Promote user to admin status"""
+    if not admin_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied: Admins only"
+        )
+
     user = get_user_by_id(db, user_id)
     if not user:
         raise HTTPException(
@@ -367,11 +376,11 @@ async def promote_user_to_admin(
     # Log the promotion
     log_audit_event(
         db,
-        admin.id,
-        admin.username,
+        admin_user.id,
+        admin_user.username,
         "admin_promotion",
         True,
-        details=f"admin {admin.username} promoted user {user.username} to admin",
+        details=f"admin {admin_user.username} promoted user {user.username} to admin",
     )
 
     return {
@@ -381,7 +390,7 @@ async def promote_user_to_admin(
     }
 
 
-@router.put("/admin/users/{user_id}/demote")
+@router.put("/admin/users/{user_id}/demote-admin")
 async def demote_admin_user(
     user_id: int,
     admin_user: User = Depends(get_admin_user),
@@ -430,6 +439,90 @@ async def demote_admin_user(
         "message": f"User {user.username} demoted from admin",
         "user_id": user.id,
         "is_admin": user.is_admin,
+    }
+
+
+@router.put("/admin/users/{user_id}/demote-premium")
+async def demote_premium_user(
+    user_id: int,
+    admin_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Admin: Remove premium status from user"""
+    if not admin_user.is_admin:
+        return HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied: Admins only"
+        )
+    user = get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    if not user.is_premium:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="User is not premium"
+        )
+
+    user.is_premium = False
+    db.commit()
+
+    # Log the demotion
+    log_audit_event(
+        db,
+        admin_user.id,
+        admin_user.username,
+        "admin_demotion",
+        True,
+        details=f"Demoted user {user.username} (ID: {user.id}) from premium",
+    )
+
+    return {
+        "message": f"User {user.username} demoted from premium",
+        "user_id": user.id,
+        "is_premium": user.is_premium,
+    }
+
+
+@router.put("/admin/users/{user_id}/promote-premium")
+async def promote_premium_user(
+    user_id: int,
+    admin_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Admin: Remove premium status from user"""
+    if not admin_user.is_admin:
+        return HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied: Admins only"
+        )
+    user = get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
+        )
+
+    if user.is_premium:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="User is already premium"
+        )
+
+    user.is_premium = True
+    db.commit()
+
+    # Log the demotion
+    log_audit_event(
+        db,
+        admin_user.id,
+        admin_user.username,
+        "premium_promotion",
+        True,
+        details=f"Promoted user {user.username} (ID: {user.id}) to premium",
+    )
+
+    return {
+        "message": f"User {user.username} promoted to premium",
+        "user_id": user.id,
+        "is_premium": user.is_premium,
     }
 
 
