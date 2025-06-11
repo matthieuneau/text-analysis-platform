@@ -62,8 +62,6 @@ services:
       dockerfile: services/summarization/Dockerfile
       target: development
     # No ports exposed - only internal communication
-    networks:
-      - app-network
     volumes:
       - summarization-models:/root/.cache/huggingface
     healthcheck:
@@ -72,6 +70,8 @@ services:
       timeout: 5s
       interval: 10s
       start_period: 60s   # Loading ML model takes some time
+    networks:
+      - app-network
 
   prometheus:
     image: prom/prometheus:latest
@@ -89,13 +89,23 @@ services:
     networks:
       - app-network
 
+  auth:
+    build:
+      context: .
+      dockerfile: services/auth/Dockerfile
+      target: development
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
   k6:
     image: grafana/k6:latest
     command: run /k6-tests/load-test.js
     volumes:
       - ./k6-tests:/k6-tests
-    networks:
-      - app-network
     depends_on:
       gateway:
         condition: service_healthy
@@ -106,6 +116,9 @@ services:
       - K6_PROMETHEUS_RW_TREND_AS_NATIVE_HISTOGRAM=true
     profiles:
       - load-test  # Only run when explicitly requested
+    networks:
+      - app-network
+    
 
 networks:
   app-network:
