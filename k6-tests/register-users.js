@@ -46,7 +46,7 @@ export default function () {
 
   // Register user
   const registerResponse = http.post(
-    'http://gateway:8080/auth/register', // Adjust URL based on your gateway config
+    'http://auth:8000/register', // Adjust URL based on your gateway config
     JSON.stringify(userData),
     params
   );
