@@ -103,13 +103,15 @@ services:
 
   k6:
     image: grafana/k6:latest
-    command: run /k6-tests/load-test.js
+    command: run /k6-tests/register-users.js
     volumes:
       - ./k6-tests:/k6-tests
     depends_on:
       gateway:
         condition: service_healthy
       prometheus:
+        condition: service_healthy
+      auth:
         condition: service_healthy
     environment:
       - K6_PROMETHEUS_RW_SERVER_URL=http://prometheus:9090/api/v1/write
