@@ -1,15 +1,12 @@
-import logging
 from contextlib import asynccontextmanager
 
 import torch
 import uvicorn
 from fastapi import FastAPI
-
-from services.summarization.summarizer import Summarizer
+from logger import logger
+from summarizer import Summarizer
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager

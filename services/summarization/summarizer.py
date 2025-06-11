@@ -3,10 +3,9 @@ import time
 from typing import AsyncGenerator
 
 import torch
+from logger import logger
+from models import StreamEvent
 from transformers.pipelines import pipeline
-
-from services.summarization.app import logger
-from services.summarization.models import StreamEvent
 
 
 class Summarizer:
@@ -42,9 +41,6 @@ class Summarizer:
         try:
             # Send start event
             yield StreamEvent(type="start", content="Starting summarization...")
-
-            # Estimate total work for progress tracking
-            estimated_tokens = len(text.split()) // 4  # Rough estimate
 
             # Run CPU-intensive work in thread pool to avoid blocking event loop
             loop = asyncio.get_event_loop()

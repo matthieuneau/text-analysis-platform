@@ -1,14 +1,13 @@
+import time
 from typing import List
 
 from pydantic import BaseModel, Field
 
 
-class SummaryResponse(BaseModel):
-    original_text: str
-    original_length: int
+class SummarizeResponse(BaseModel):
     summary: str
-    summary_length: int
-    compression_ratio: float
+    processing_time: float
+    token_count: int
 
 
 class KeywordsResponse(BaseModel):
@@ -17,26 +16,12 @@ class KeywordsResponse(BaseModel):
     total_keywords: int
 
 
-# TODO: delete, replaced by SummarizeRequest ??
-# # Request/Response Models
-# class TextInput(BaseModel):
-#     text: str = Field(
-#         ..., min_length=50, max_length=10000, description="Text to summarize"
-#     )
-#     summary_min_length: int = Field(
-#         default=30, ge=10, le=200, description="Minimum length of summary"
-#     )
-#     summary_max_length: int = Field(
-#         default=150, ge=30, le=500, description="Maximum length of summary"
-#     )
-
-
 class StreamEvent(BaseModel):
     """Structure for SSE events"""
 
     type: str  # 'start', 'token', 'progress', 'complete', 'error'
-    content: Optional[str] = None
-    progress: Optional[float] = None
+    content: str | None = None
+    progress: float | None = None
     timestamp: float = Field(default_factory=time.time)
 
 
@@ -44,11 +29,11 @@ class SummarizeRequest(BaseModel):
     text: str = Field(
         ..., min_length=10, max_length=10000, description="Text to summarize"
     )
-    streaming: Optional[bool] = Field(False, description="Enable streaming response")
-    max_length: Optional[int] = Field(
+    streaming: bool | None = Field(False, description="Enable streaming response")
+    max_length: int | None = Field(
         130, ge=50, le=500, description="Maximum summary length"
     )
-    min_length: Optional[int] = Field(
+    min_length: int | None = Field(
         30, ge=10, le=100, description="Minimum summary length"
     )
 

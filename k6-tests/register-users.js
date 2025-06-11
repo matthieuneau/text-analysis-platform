@@ -84,7 +84,7 @@ export function setup() {
   console.log('Target: 100 user registrations');
   
   // Test connectivity to the auth service
-  const healthCheck = http.get('http://gateway:8080/health', {
+  const healthCheck = http.get('http://auth:8000/health', {
     timeout: '10s',
   });
   

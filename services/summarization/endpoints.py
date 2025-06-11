@@ -1,15 +1,15 @@
 from typing import List
 
+from app import app, summarizer
 from fastapi import HTTPException, Request
 from fastapi.responses import StreamingResponse
-
-from services.gateway.schemas import SummarizeResponse
-from services.summarization.app import app, logger, summarizer
-from services.summarization.models import (
+from logger import logger
+from models import (
     KeywordInput,
     KeywordsResponse,
     StreamEvent,
     SummarizeRequest,
+    SummarizeResponse,
 )
 
 
