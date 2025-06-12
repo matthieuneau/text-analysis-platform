@@ -118,15 +118,14 @@ services:
       logging: "promtail"
       logging_jobname: "auth"
 
-  # Loki for log storage
+# Loki for log storage
   loki:
     image: grafana/loki:latest
     ports:
       - "3100:3100"
     volumes:
-      - ./loki-config.yaml:/etc/loki/local-config.yaml
       - loki-data:/tmp/loki
-    command: -config.file=/etc/loki/local-config.yaml
+    # No command - use built-in default config
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:3100/ready"]
       interval: 10s
@@ -140,18 +139,22 @@ services:
   promtail:
     image: grafana/promtail:latest
     volumes:
-      - ./promtail-config.yaml:/etc/promtail/config.yml
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
-    command: -config.file=/etc/promtail/config.yml
+    # No command - use built-in default config
     depends_on:
       loki:
         condition: service_healthy
-    networks:
-      - app-network
+    healthcheck:
+      test: ["CMD", "promtail", "-version"]
+      interval: 10s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
     labels:
       logging: "promtail"
       logging_jobname: "promtail"
+    networks:
+      - app-network
 
   k6:
     image: grafana/k6:latest
@@ -182,5 +185,7 @@ volumes:
   prometheus-data:
   summarization-models:
   sentiment-models:
+  loki-data:
+
     
     
