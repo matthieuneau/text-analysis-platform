@@ -1,7 +1,8 @@
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 from database import engine
+from pydantic import BaseModel
 from sqlalchemy import (
     Boolean,
     DateTime,
@@ -113,3 +114,10 @@ Index("idx_audit_logs_user_time", AuditLog.user_id, AuditLog.timestamp)
 
 # Create all tables
 Base.metadata.create_all(bind=engine)
+
+
+# TODO: change to List[int] ??
+class TokenizedTextResponse(BaseModel):
+    original_text: str
+    tokens: List[str]
+    token_count: int
