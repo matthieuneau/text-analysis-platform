@@ -28,7 +28,7 @@ services:
     build:
       context: .
       dockerfile: services/preprocessing/Dockerfile
-      target: development
+      # target: production
     # No ports exposed - only internal communication
     networks:
       - app-network
