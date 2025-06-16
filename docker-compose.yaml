@@ -33,6 +33,8 @@ services:
       dockerfile: services/preprocessing/Dockerfile
       target: development
     # No ports exposed - only internal communication
+    ports:
+      - "8001:8000"  # For local testing
     networks:
       - app-network
     healthcheck:
@@ -41,6 +43,8 @@ services:
       timeout: 5s
       interval: 10s
       start_period: 10s
+    env_file:
+      - services/preprocessing/.env
     labels:
       logging: "promtail"
       logging_jobname: "preprocessing"
@@ -140,7 +144,10 @@ services:
     image: grafana/promtail:latest
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./promtail-config.yaml:/etc/promtail/config.yaml
     # No command - use built-in default config
+    ports:
+      - "9080:9080"
     depends_on:
       loki:
         condition: service_healthy
