@@ -139,12 +139,32 @@ services:
     networks:
       - app-network
 
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+    env_file:
+      - services/grafana/.env
+    depends_on:
+      loki:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - app-network
+
   # Promtail for log shipping
   promtail:
     image: grafana/promtail:latest
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - ./promtail-config.yaml:/etc/promtail/config.yaml
+      - ./promtail-config.yml:/etc/promtail/config.yml
     # No command - use built-in default config
     ports:
       - "9080:9080"
@@ -193,6 +213,4 @@ volumes:
   summarization-models:
   sentiment-models:
   loki-data:
-
-    
-    
+  grafana-data:
