@@ -23,6 +23,9 @@ services:
       - app-network
     env_file:
       - .env
+    labels:
+      logging: "promtail"
+      logging_jobname: "gateway"
     
   preprocessing:
     build:
@@ -30,6 +33,8 @@ services:
       dockerfile: services/preprocessing/Dockerfile
       target: development
     # No ports exposed - only internal communication
+    ports:
+      - "8001:8000"  # For local testing
     networks:
       - app-network
     healthcheck:
@@ -38,6 +43,11 @@ services:
       timeout: 5s
       interval: 10s
       start_period: 10s
+    env_file:
+      - services/preprocessing/.env
+    labels:
+      logging: "promtail"
+      logging_jobname: "preprocessing"
 
   sentiment_analysis:
     build:
@@ -55,6 +65,9 @@ services:
       timeout: 5s
       interval: 10s
       start_period: 60s   # Loading ML model takes some time
+    labels:
+      logging: "promtail"
+      logging_jobname: "sentiment_analysis"
 
   summarization:
     build:
@@ -72,6 +85,9 @@ services:
       start_period: 60s   # Loading ML model takes some time
     networks:
       - app-network
+    labels:
+      logging: "promtail"
+      logging_jobname: "summarization"
 
   prometheus:
     image: prom/prometheus:latest
@@ -100,6 +116,71 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+    networks:
+      - app-network
+    labels:
+      logging: "promtail"
+      logging_jobname: "auth"
+
+# Loki for log storage
+  loki:
+    image: grafana/loki:latest
+    ports:
+      - "3100:3100"
+    volumes:
+      - loki-data:/tmp/loki
+    # No command - use built-in default config
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3100/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - app-network
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana-provisioning:/etc/grafana/provisioning
+    env_file:
+      - services/grafana/.env
+    depends_on:
+      loki:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - app-network
+
+  # Promtail for log shipping
+  promtail:
+    image: grafana/promtail:latest
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./promtail-config.yml:/etc/promtail/config.yml
+    # No command - use built-in default config
+    ports:
+      - "9080:9080"
+    depends_on:
+      loki:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "promtail", "-version"]
+      interval: 10s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+    labels:
+      logging: "promtail"
+      logging_jobname: "promtail"
     networks:
       - app-network
 
@@ -132,5 +213,5 @@ volumes:
   prometheus-data:
   summarization-models:
   sentiment-models:
-    
-    
+  loki-data:
+  grafana-data:
