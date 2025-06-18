@@ -46,7 +46,7 @@ services:
       target: development
     # No ports exposed - only internal communication
     volumes:
-      - sentiment-models:/root/.cache/huggingface  # HF default cache location
+      - /Users/matthieuneau/text-analysis-platform/services/sentiment-analysis/model:/opt/model
     networks:
       - app-network
     healthcheck:
