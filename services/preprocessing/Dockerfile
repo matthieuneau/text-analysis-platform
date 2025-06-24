@@ -2,10 +2,11 @@
 FROM python:3.13-slim AS base
 WORKDIR /app
 
-COPY uv.lock pyproject.toml ./
+COPY services/preprocessing/uv.lock services/preprocessing/pyproject.toml ./
 RUN pip install uv && uv sync --frozen
+RUN mkdir src
 
-COPY services/preprocessing .
+COPY services/preprocessing/src src/
 
 # Production stage - minimal and optimized
 FROM base AS production
@@ -20,7 +21,7 @@ RUN useradd --create-home --shell /bin/bash --uid 1000 app && \
 USER app
 
 EXPOSE 8000
-CMD ["uv", "run", "app.py"]
+CMD ["uv", "run", "src/app.py"]
 
 # Development stage - includes dev tools and debugging capabilities
 FROM base AS development
@@ -38,4 +39,4 @@ RUN apt-get update && apt-get install -y \
 
 # Keep root user for easier debugging
 EXPOSE 8000
-CMD ["uv", "run", "app.py"]
+CMD ["uv", "run", "src/app.py"]

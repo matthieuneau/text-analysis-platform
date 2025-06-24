@@ -30,6 +30,29 @@ def add_service_context(
     return event_dict
 
 
+def add_trace_context(
+    logger: Any, method_name: str, event_dict: EventDict
+) -> EventDict:
+    """Add OpenTelemetry trace context to logs"""
+    try:
+        from opentelemetry import trace
+
+        current_span = trace.get_current_span()
+        if current_span != trace.INVALID_SPAN:
+            span_context = current_span.get_span_context()
+            if span_context.is_valid:
+                event_dict["trace_id"] = f"{span_context.trace_id:032x}"
+                event_dict["span_id"] = f"{span_context.span_id:016x}"
+    except ImportError:
+        # OpenTelemetry not available
+        pass
+    except Exception:
+        # Don't let tracing break logging
+        pass
+
+    return event_dict
+
+
 def add_correlation_id(
     logger: Any, method_name: str, event_dict: EventDict
 ) -> EventDict:
@@ -199,6 +222,7 @@ def configure_logging():
             add_service_context,
             add_correlation_id,
             add_request_context,
+            add_trace_context,
             structlog.stdlib.filter_by_level,
             structlog.stdlib.add_logger_name,
             structlog.stdlib.add_log_level,
@@ -221,6 +245,7 @@ def configure_logging():
             add_service_context,
             add_correlation_id,
             add_request_context,
+            add_trace_context,
             structlog.stdlib.filter_by_level,
             structlog.stdlib.add_logger_name,
             structlog.stdlib.add_log_level,
