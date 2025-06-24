@@ -2,3 +2,10 @@
 __pycache__
 .env
 *.DS_STORE
+*.db
+
+# Databases for logs, metrics, and traces
+tempo-data/
+grafana-data/
+loki-data/
+
