@@ -48,6 +48,9 @@ services:
     labels:
       logging: "promtail"
       logging_jobname: "preprocessing"
+    depends_on:
+      tempo:
+        condition: service_healthy  # Add this if tempo is running
 
   sentiment_analysis:
     build:
@@ -184,6 +187,28 @@ services:
     networks:
       - app-network
 
+  tempo:
+      image: grafana/tempo:latest
+      command: [ "-config.file=/etc/tempo.yaml" ]
+      volumes:
+        - ./tempo-config.yaml:/etc/tempo.yaml
+        - tempo-data:/tmp/tempo
+      ports:
+        - "3200:3200"   # tempo
+        - "4317:4317"   # otlp grpc
+        - "4318:4318"   # otlp http
+      healthcheck:
+        test: ["CMD", "wget", "-qO-", "http://localhost:3200/ready"]
+        interval: 10s
+        timeout: 5s
+        retries: 3
+        start_period: 10s
+      networks:
+        - app-network
+
+volumes:
+  # ... your existing volumes
+  tempo-data:
   k6:
     image: grafana/k6:latest
     command: run /k6-tests/register-users.js
@@ -215,3 +240,4 @@ volumes:
   sentiment-models:
   loki-data:
   grafana-data:
+  tempo-data:
