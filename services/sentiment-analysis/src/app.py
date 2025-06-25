@@ -45,7 +45,7 @@ ort_session = None  # type: ignore
 tokenizer = None  # type: ignore
 model_name = "cardiffnlp/twitter-roberta-base-sentiment-latest"
 
-onnx_model_path = "/opt/model/sentiment-model.onnx"
+onnx_model_path = "/opt/models/model.onnx"
 
 
 # Request/Response Models

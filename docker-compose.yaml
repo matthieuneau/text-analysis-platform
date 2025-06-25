@@ -55,11 +55,13 @@ services:
   sentiment_analysis:
     build:
       context: .
-      dockerfile: services/sentiment_analysis/Dockerfile
-      target: development
+      dockerfile: services/sentiment-analysis/Dockerfile
+      target: base
     # No ports exposed - only internal communication
+    ports:
+      - "8002:8000"  # For local testing
     volumes:
-      - /Users/matthieuneau/text-analysis-platform/services/sentiment-analysis/model:/opt/model
+      - ./services/sentiment-analysis/models:/opt/models
     networks:
       - app-network
     healthcheck:
