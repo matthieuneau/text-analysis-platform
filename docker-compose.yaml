@@ -51,6 +51,8 @@ services:
     depends_on:
       tempo:
         condition: service_healthy  # Add this if tempo is running
+      redis:
+        condition: service_healthy
 
   sentiment_analysis:
     build:
@@ -126,6 +128,28 @@ services:
     labels:
       logging: "promtail"
       logging_jobname: "auth"
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"  # For local testing
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru --tcp-keepalive 300
+    # Keep tcp connections alive for performance
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M    # safety net, after the limit of 256 set by redis-server
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+    networks:
+      - app-network
 
 # Loki for log storage
   loki:
@@ -240,3 +264,4 @@ volumes:
   loki-data:
   grafana-data:
   tempo-data:
+  redis-data:
