@@ -1,5 +1,6 @@
 import time
 
+from cache import get_cache_stats
 from core import clean_text, normalize_text, tokenize_text
 from fastapi import APIRouter, HTTPException
 from logger import get_logger
@@ -169,3 +170,12 @@ async def readiness_check():
 @router.get("/health")
 async def health_check():
     return {"status": "healthy", "service": "preprocessing"}
+
+
+# Cache statistics endpoint
+@router.get("/cache/stats")
+async def cache_stats():
+    """Get cache statistics for debugging"""
+    stats = get_cache_stats()
+    logger.info("Cache stats requested", stats=stats)
+    return stats

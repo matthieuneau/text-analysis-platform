@@ -2,11 +2,13 @@ import re
 import string
 from typing import List
 
+from cache import cache_with_logging, clean_cache, normalize_cache, tokenize_cache
 from logger import get_logger
 
 logger = get_logger(__name__)
 
 
+@cache_with_logging("clean", clean_cache)
 def clean_text(text: str, options: dict = {}) -> tuple[str, List[str]]:
     """Clean text by removing unwanted characters and formatting"""
     logger.debug("Starting text cleaning", text_length=len(text), options=options)
@@ -69,6 +71,7 @@ def clean_text(text: str, options: dict = {}) -> tuple[str, List[str]]:
     return cleaned.strip(), operations
 
 
+@cache_with_logging("tokenize", tokenize_cache)
 def tokenize_text(text: str, options: dict = {}) -> List[str]:
     """Simple tokenization - split by whitespace and punctuation"""
     logger.debug("Starting tokenization", text_length=len(text))
@@ -93,6 +96,7 @@ def tokenize_text(text: str, options: dict = {}) -> List[str]:
     return tokens
 
 
+@cache_with_logging("normalize", normalize_cache)
 def normalize_text(text: str, options: dict = {}) -> tuple[str, List[str]]:
     """Normalize text case and format"""
     logger.debug("Starting normalization", text_length=len(text))
