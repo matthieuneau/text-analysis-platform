@@ -8,9 +8,10 @@ RUN pip install uv && uv sync
 RUN mkdir src
 
 COPY services/preprocessing/src src/
+COPY services/preprocessing/gunicorn.conf.py ./
 
 EXPOSE 8000
-CMD ["uv", "run", "src/app.py"]
+CMD ["uv", "run", "gunicorn", "-c", "gunicorn.conf.py", "src.app:app"]
 
 # Production stage - minimal and optimized
 FROM base AS prod
@@ -25,4 +26,4 @@ RUN useradd --create-home --shell /bin/bash --uid 1000 app && \
 USER app
 
 EXPOSE 8000
-CMD ["uv", "run", "src/app.py"]
+CMD ["uv", "run", "gunicorn", "-c", "gunicorn.conf.py", "src.app:app"]

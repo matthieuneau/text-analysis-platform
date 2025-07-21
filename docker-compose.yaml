@@ -49,6 +49,12 @@ services:
       logging: "promtail"
       logging_jobname: "preprocessing"
     depends_on:
+      prometheus:
+        condition: service_healthy
+      promtail:
+        condition: service_healthy
+      loki:
+        condition: service_healthy  # Add this if tempo is running
       tempo:
         condition: service_healthy  # Add this if tempo is running
       redis:
@@ -234,19 +240,16 @@ services:
 
   k6:
     image: grafana/k6:latest
-    command: run /k6-tests/register-users.js
+    command: ["run", "/k6-tests/load-test-preprocessing.js"]
     volumes:
       - ./k6-tests:/k6-tests
     depends_on:
-      gateway:
+      preprocessing:
         condition: service_healthy
       prometheus:
         condition: service_healthy
-      auth:
-        condition: service_healthy
-    environment:
-      - K6_PROMETHEUS_RW_SERVER_URL=http://prometheus:9090/api/v1/write
-      - K6_PROMETHEUS_RW_TREND_AS_NATIVE_HISTOGRAM=true
+    env_file:
+      - k6-tests/.env
     profiles:
       - load-test  # Only run when explicitly requested
     networks:
