@@ -4,6 +4,7 @@ __pycache__
 *.DS_STORE
 models/
 *.db
+.claude
 
 # Databases for logs, metrics, and traces
 tempo-data/
@@ -11,3 +12,4 @@ grafana-data/
 loki-data/
 
 model/
+datasets/

@@ -1,0 +1,1 @@
+the cd command is aliased to zoxide. If you need the cd command, probably best to use \cd instead
